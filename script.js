@@ -88,9 +88,7 @@ function renderProducts(productsToShow) {
 function renderCurrentCategory() {
   const searchTerm = productSearch.value.trim().toLowerCase();
   if (!categoryFilter.value && !searchTerm) {
-    productsContainer.replaceChildren(
-      makeElement("p", "placeholder-message", "Select a category to discover products.")
-    );
+    renderProducts(products);
     return;
   }
 
@@ -181,6 +179,22 @@ function updateRequestControls() {
   generateRoutineButton.disabled = selectedProductIds.size === 0;
   userInput.disabled = false;
   sendButton.disabled = !hasGeneratedRoutine;
+  chatForm.setAttribute("aria-busy", "false");
+}
+
+// Changing the edit invalidates a previously generated routine and starts a
+// fresh conversation so follow-up answers cannot use outdated product context.
+function resetRoutineWhenSelectionsChange() {
+  if (!hasGeneratedRoutine) {
+    return;
+  }
+
+  hasGeneratedRoutine = false;
+  messages = [systemMessage];
+  chatEntries = [];
+  userInput.placeholder = "Ask a beauty or routine question...";
+  renderChat();
+  chatStatus.textContent = "Generate a new routine after updating your selected products.";
 }
 
 // Send the full chat history to the class Worker and keep successful turns in memory.
@@ -193,6 +207,7 @@ async function sendToWorker(apiContent, displayContent, successMessage) {
   generateRoutineButton.disabled = true;
   userInput.disabled = true;
   sendButton.disabled = true;
+  chatForm.setAttribute("aria-busy", "true");
   chatStatus.textContent = "Connecting with your beauty advisor…";
 
   try {
@@ -263,9 +278,7 @@ async function initialize() {
     }
 
     renderSelectedProducts();
-    productsContainer.append(
-      makeElement("p", "placeholder-message", "Select a category to discover products.")
-    );
+    renderProducts(products);
   } catch (error) {
     productsContainer.replaceChildren(
       makeElement("p", "placeholder-message error-message", `Products could not be loaded: ${error.message}`)
@@ -300,6 +313,7 @@ productsContainer.addEventListener("click", (event) => {
     selectedProductIds.add(product.id);
   }
 
+  resetRoutineWhenSelectionsChange();
   saveSelectedProducts();
   renderCurrentCategory();
   renderSelectedProducts();
@@ -319,6 +333,7 @@ selectedProductsList.addEventListener("click", (event) => {
   }
 
   selectedProductIds.delete(productId);
+  resetRoutineWhenSelectionsChange();
   saveSelectedProducts();
   renderSelectedProducts();
   renderCurrentCategory();
@@ -326,6 +341,7 @@ selectedProductsList.addEventListener("click", (event) => {
 
 clearSelectionsButton.addEventListener("click", () => {
   selectedProductIds.clear();
+  resetRoutineWhenSelectionsChange();
   saveSelectedProducts();
   renderSelectedProducts();
   renderCurrentCategory();
